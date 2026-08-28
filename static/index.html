@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiZ Stock Light Controller</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="background-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+    
+    <div class="container">
+        <header>
+            <h1>WiZ Stock Light</h1>
+            <p>Real-time algorithmic light control</p>
+        </header>
+
+        <div class="status-panel">
+            <div class="status-header">
+                <h2>Live Status</h2>
+                <span id="market-status" class="badge">Checking...</span>
+            </div>
+            <div class="status-details">
+                <div class="status-item">
+                    <span class="label">Last Price</span>
+                    <span id="last-price" class="value">--</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Last Updated</span>
+                    <span id="last-update" class="value">--</span>
+                </div>
+            </div>
+        </div>
+
+        <form id="config-form" class="glass-panel">
+            <h2>Configuration</h2>
+            
+            <div class="form-group">
+                <label for="ticker">Ticker Symbol</label>
+                <input type="text" id="ticker" name="ticker" list="stock-options" autocomplete="off" required placeholder="e.g. RELIANCE.NS">
+                <datalist id="stock-options"></datalist>
+            </div>
+            
+            <div class="form-group">
+                <label for="mode">Operating Mode</label>
+                <select id="mode" name="mode">
+                    <option value="portfolio">Portfolio (vs Expected)</option>
+                    <option value="tick">Tick-to-Tick (vs Last Poll)</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group half">
+                    <label for="expected">Expected Price</label>
+                    <input type="number" id="expected" name="expected" step="0.01" required>
+                </div>
+                <div class="form-group half">
+                    <label for="poll_seconds">Poll Rate (s)</label>
+                    <input type="number" id="poll_seconds" name="poll_seconds" min="1" required>
+                </div>
+            </div>
+
+            <div class="form-row alerts-row">
+                <div class="form-group half">
+                    <label for="target" class="text-green">🎯 Target</label>
+                    <input type="number" id="target" name="target" step="0.01" required>
+                </div>
+                <div class="form-group half">
+                    <label for="stop_loss" class="text-red">🚨 Stop Loss</label>
+                    <input type="number" id="stop_loss" name="stop_loss" step="0.01" required>
+                </div>
+            </div>
+
+            <div id="save-msg" class="save-msg hidden">Saved successfully!</div>
+        </form>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
