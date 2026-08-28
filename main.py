@@ -11,6 +11,7 @@ from pydantic import BaseModel
 import uvicorn
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
+from supabase import create_client, Client
 
 # Load local .env file if it exists
 load_dotenv()
@@ -18,6 +19,15 @@ load_dotenv()
 # --- Secrets ---
 SMARTTHINGS_TOKEN = os.getenv("SMARTTHINGS_TOKEN", "")
 DEVICE_ID = os.getenv("DEVICE_ID", "")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+
+supabase_client = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        print(f"Supabase init error: {e}")
 
 # --- Dynamic Configuration (Defaults from Env Vars) ---
 config = {
@@ -176,6 +186,24 @@ async def polling_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Try loading config from Supabase on startup
+    if supabase_client:
+        try:
+            res = supabase_client.table('app_config').select("*").eq("id", 1).execute()
+            if res.data:
+                data = res.data[0]
+                config.update({
+                    "ticker": data.get("ticker", config["ticker"]),
+                    "poll_seconds": data.get("poll_seconds", config["poll_seconds"]),
+                    "mode": data.get("mode", config["mode"]),
+                    "expected": data.get("expected", config["expected"]),
+                    "stop_loss": data.get("stop_loss", config["stop_loss"]),
+                    "target": data.get("target", config["target"])
+                })
+                print("Loaded config from Supabase!")
+        except Exception as e:
+            print(f"Failed to load from Supabase: {e}")
+            
     task = asyncio.create_task(polling_loop())
     yield
     task.cancel()
@@ -197,6 +225,14 @@ def get_config():
 async def update_config(new_config: ConfigModel):
     global config
     config.update(new_config.model_dump())
+    
+    # Save to Supabase
+    if supabase_client:
+        try:
+            supabase_client.table('app_config').upsert({"id": 1, **config}).execute()
+        except Exception as e:
+            print(f"Failed to save to Supabase: {e}")
+            
     return {"status": "success", "config": config}
 
 @app.get("/api/status")
