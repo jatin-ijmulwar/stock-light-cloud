@@ -102,7 +102,12 @@ def get_last_price(ticker: str) -> float:
     raise RuntimeError(f"Could not fetch price for {ticker}")
 
 
-def main():
+import asyncio
+from fastapi import FastAPI
+import uvicorn
+from contextlib import asynccontextmanager
+
+async def polling_loop():
     print(f"Starting Cloud Polling for {TICKER}...")
     prev_price = None
     sl_triggered = False
@@ -112,7 +117,7 @@ def main():
         try:
             if not is_market_open():
                 print("Market is closed. Sleeping for 60 seconds...")
-                time.sleep(60)
+                await asyncio.sleep(60)
                 continue
                 
             price = get_last_price(TICKER)
@@ -124,7 +129,7 @@ def main():
                     print(f"[{now_str}] 🚨 STOP LOSS HIT! Setting bulb to RED.")
                     set_bulb_color(COLOR_RED)
                     sl_triggered = True
-                time.sleep(POLL_SECONDS)
+                await asyncio.sleep(POLL_SECONDS)
                 continue
                 
             if price >= TARGET:
@@ -132,7 +137,7 @@ def main():
                     print(f"[{now_str}] 🎯 TARGET HIT! Setting bulb to GREEN.")
                     set_bulb_color(COLOR_GREEN)
                     tgt_triggered = True
-                time.sleep(POLL_SECONDS)
+                await asyncio.sleep(POLL_SECONDS)
                 continue
                 
             # Reset triggers if we are back in the safe zone
@@ -161,7 +166,22 @@ def main():
         except Exception as e:
             print(f"Loop Error: {e}")
             
-        time.sleep(POLL_SECONDS)
+        await asyncio.sleep(POLL_SECONDS)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start the polling loop in the background when the server starts
+    task = asyncio.create_task(polling_loop())
+    yield
+    # Cancel the task when the server shuts down
+    task.cancel()
+
+app = FastAPI(lifespan=lifespan)
+
+@app.get("/")
+def health_check():
+    return {"status": "running", "ticker": TICKER, "mode": MODE}
 
 if __name__ == "__main__":
-    main()
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
